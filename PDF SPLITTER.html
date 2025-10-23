@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Splitter</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- pdf.js for rendering PDF previews -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <!-- pdf-lib for splitting PDFs -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568; /* gray-600 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* gray-500 */
+        }
+        /* Style for the file input button */
+        .file-input-button {
+            cursor: pointer;
+            color: #3b82f6; /* blue-500 */
+            text-decoration: underline;
+        }
+        /* Highlight dropzone when a file is dragged over */
+        .drag-over {
+            border-color: #3b82f6 !important; /* blue-500 */
+            background-color: #2c3547;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-6xl mx-auto bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- Left Panel: Controls -->
+        <div class="flex flex-col h-full">
+            <header class="mb-6">
+                <h1 class="text-3xl font-bold text-white">PDF Splitter</h1>
+		<h2 class="text-1xl font-italic text-white">Powered by ARAV P DESAI<h2>
+                <p class="text-gray-400 mt-1">Select a PDF, choose your split points, and get your new files instantly.</p>
+            </header>
+
+            <!-- File Upload Section -->
+            <div id="upload-section">
+                <div id="drop-zone" class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center transition-colors duration-300">
+                    <svg class="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                    <p class="mt-4 text-gray-400">Drag & Drop your PDF here or 
+                        <label for="file-input" class="file-input-button font-semibold">browse</label>
+                    </p>
+                    <input type="file" id="file-input" class="hidden" accept=".pdf">
+                </div>
+                <div id="file-info" class="mt-4 text-sm text-center text-gray-400 min-h-[20px]"></div>
+            </div>
+
+            <!-- Splitting Controls -->
+            <div id="controls-section" class="hidden flex-grow flex flex-col mt-6">
+                <div>
+                    <label for="page-input" class="block text-sm font-medium text-gray-300 mb-1">Enter page number to split from:</label>
+                    <div class="flex gap-3">
+                        <input type="number" id="page-input" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="e.g., 5">
+                        <button id="add-split-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                            Add Point
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex-grow">
+                    <h3 class="text-md font-semibold text-white mb-2">Split Points:</h3>
+                    <div id="split-points-container" class="bg-gray-700/50 rounded-lg p-3 h-32 overflow-y-auto">
+                        <ul id="split-points-list" class="space-y-2">
+                           <p id="split-points-placeholder" class="text-gray-500 text-center py-8">No split points added yet.</p>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-6">
+                    <button id="split-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-lg py-3 rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Split PDF
+                    </button>
+                    <div id="status-message" class="mt-3 text-center text-sm min-h-[20px]"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: PDF Preview -->
+        <div class="bg-gray-900 rounded-lg flex items-center justify-center p-4 min-h-[400px] lg:min-h-0">
+            <div id="preview-container" class="w-full h-full flex items-center justify-center">
+                <p id="preview-placeholder" class="text-gray-500">PDF preview will appear here</p>
+                <canvas id="pdf-preview" class="hidden max-w-full max-h-full rounded-md shadow-lg"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set workerSrc for pdf.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js`;
+
+        // DOM elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+        const uploadSection = document.getElementById('upload-section');
+        const controlsSection = document.getElementById('controls-section');
+        const pageInput = document.getElementById('page-input');
+        const addSplitBtn = document.getElementById('add-split-btn');
+        const splitPointsList = document.getElementById('split-points-list');
+        const splitPointsPlaceholder = document.getElementById('split-points-placeholder');
+        const splitBtn = document.getElementById('split-btn');
+        const statusMessage = document.getElementById('status-message');
+        const pdfPreview = document.getElementById('pdf-preview');
+        const previewPlaceholder = document.getElementById('preview-placeholder');
+
+        // App state
+        let pdfFile = null;
+        let pdfDoc = null;
+        let pdfLibDoc = null;
+        let totalPages = 0;
+        let splitPoints = new Set();
+        let originalFileName = '';
+
+        // --- Drag and Drop Event Handlers ---
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                handleFile(files[0]);
+            }
+        });
+
+        // --- File Input Event Handler ---
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        // --- Core File Handling Logic ---
+        async function handleFile(file) {
+            if (file.type !== 'application/pdf') {
+                fileInfo.textContent = 'Error: Please select a PDF file.';
+                fileInfo.classList.add('text-red-400');
+                return;
+            }
+
+            resetState();
+            pdfFile = file;
+            originalFileName = file.name.replace(/\.pdf$/i, '');
+            fileInfo.textContent = `Loading "${file.name}"...`;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+
+                // Load for pdf.js (preview)
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                pdfDoc = await loadingTask.promise;
+                totalPages = pdfDoc.numPages;
+
+                // Load for pdf-lib (splitting)
+                pdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+
+                // Update UI
+                fileInfo.textContent = `File: "${file.name}" (${totalPages} pages)`;
+                fileInfo.classList.remove('text-red-400');
+                uploadSection.classList.add('hidden');
+                controlsSection.classList.remove('hidden');
+                pageInput.max = totalPages;
+                pageInput.min = 1;
+                renderPagePreview(1); // Show first page by default
+
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                fileInfo.textContent = 'Error: Could not read the PDF file. It may be corrupt or encrypted.';
+                fileInfo.classList.add('text-red-400');
+                resetState();
+            }
+        }
+
+        // --- Page Preview Logic ---
+        async function renderPagePreview(pageNum) {
+            if (!pdfDoc || pageNum < 1 || pageNum > totalPages) {
+                pdfPreview.classList.add('hidden');
+                previewPlaceholder.textContent = pageNum ? 'Invalid page number' : 'PDF preview will appear here';
+                previewPlaceholder.classList.remove('hidden');
+                return;
+            }
+            
+            try {
+                const page = await pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.5 });
+                const context = pdfPreview.getContext('2d');
+                
+                pdfPreview.height = viewport.height;
+                pdfPreview.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
+
+                previewPlaceholder.classList.add('hidden');
+                pdfPreview.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error rendering page:', error);
+                previewPlaceholder.textContent = 'Error rendering page preview.';
+                previewPlaceholder.classList.remove('hidden');
+                pdfPreview.classList.add('hidden');
+            }
+        }
+        
+        pageInput.addEventListener('input', () => {
+            const pageNum = parseInt(pageInput.value, 10);
+            if(pageNum >=1 && pageNum <= totalPages) {
+                renderPagePreview(pageNum);
+            }
+        });
+
+        // --- Split Point Management ---
+        addSplitBtn.addEventListener('click', () => {
+            const pageNum = parseInt(pageInput.value, 10);
+            if (pageNum > 1 && pageNum <= totalPages) { // Cannot split from page 1
+                splitPoints.add(pageNum);
+                updateSplitPointsUI();
+                pageInput.value = '';
+                pageInput.focus();
+            } else {
+                statusMessage.textContent = 'Please enter a valid page number (cannot be page 1).';
+                statusMessage.classList.add('text-yellow-400');
+                setTimeout(() => statusMessage.textContent = '', 3000);
+            }
+        });
+        
+        function updateSplitPointsUI() {
+            splitPointsList.innerHTML = '';
+            if (splitPoints.size === 0) {
+                splitPointsList.appendChild(splitPointsPlaceholder);
+                splitBtn.disabled = true;
+                return;
+            }
+            
+            splitPointsPlaceholder.remove();
+            
+            const sortedPoints = Array.from(splitPoints).sort((a, b) => a - b);
+            sortedPoints.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between bg-gray-800 p-2 rounded-md';
+                li.innerHTML = `
+                    <span class="text-sm">Split from Page ${p}</span>
+                    <button data-page="${p}" class="remove-btn text-gray-500 hover:text-red-400 transition">&times;</button>
+                `;
+                splitPointsList.appendChild(li);
+            });
+
+            splitBtn.disabled = false;
+        }
+
+        splitPointsList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-btn')) {
+                const pageNum = parseInt(e.target.dataset.page, 10);
+                splitPoints.delete(pageNum);
+                updateSplitPointsUI();
+            }
+        });
+        
+        // --- PDF Splitting Logic ---
+        splitBtn.addEventListener('click', async () => {
+            if (splitPoints.size === 0 || !pdfLibDoc) return;
+            
+            statusMessage.textContent = 'Splitting PDF... please wait.';
+            statusMessage.classList.remove('text-green-400', 'text-red-400');
+            splitBtn.disabled = true;
+
+            try {
+                const sortedPoints = [1, ...Array.from(splitPoints).sort((a, b) => a - b)];
+                const ranges = [];
+                for (let i = 0; i < sortedPoints.length; i++) {
+                    const start = sortedPoints[i];
+                    const end = (i + 1 < sortedPoints.length) ? sortedPoints[i+1] - 1 : totalPages;
+                    ranges.push({ start, end });
+                }
+
+                for (const range of ranges) {
+                    const newPdfDoc = await PDFLib.PDFDocument.create();
+                    const pageIndices = [];
+                    for (let i = range.start; i <= range.end; i++) {
+                        pageIndices.push(i - 1);
+                    }
+
+                    const copiedPages = await newPdfDoc.copyPages(pdfLibDoc, pageIndices);
+                    copiedPages.forEach(page => newPdfDoc.addPage(page));
+
+                    const pdfBytes = await newPdfDoc.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${originalFileName}_pages_${range.start}-${range.end}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+                statusMessage.textContent = 'Successfully split and downloaded all files!';
+                statusMessage.classList.add('text-green-400');
+            } catch (error) {
+                console.error('Error splitting PDF:', error);
+                statusMessage.textContent = 'An error occurred during splitting.';
+                statusMessage.classList.add('text-red-400');
+            } finally {
+                // Allow splitting again or uploading a new file
+                splitBtn.disabled = false;
+            }
+        });
+        
+        function resetState() {
+            pdfFile = null;
+            pdfDoc = null;
+            pdfLibDoc = null;
+            totalPages = 0;
+            splitPoints.clear();
+            originalFileName = '';
+            
+            fileInfo.textContent = '';
+            fileInfo.classList.remove('text-red-400');
+            uploadSection.classList.remove('hidden');
+            controlsSection.classList.add('hidden');
+            pageInput.value = '';
+            statusMessage.textContent = '';
+            pdfPreview.classList.add('hidden');
+            previewPlaceholder.textContent = 'PDF preview will appear here';
+            previewPlaceholder.classList.remove('hidden');
+            updateSplitPointsUI();
+        }
+
+    </script>
+</body>
+</html>
